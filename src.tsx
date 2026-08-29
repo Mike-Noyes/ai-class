@@ -1,0 +1,18 @@
+import{StrictMode,useEffect,useMemo,useState}from'react';import{createRoot}from'react-dom/client';import{traceRsk,parseWord,type Tableau,type Bump}from'./rsk';import'./style.css'
+const examples=[['A quick bump','3 1 4 2'],['Repeated letters','2 3 1 2 3 1'],['Long descent','5 4 3 2 1']]
+function Tab({data,active,q=false}:{data:Tableau,active:Bump[],q?:boolean}){if(!data.length)return <div className="empty">∅ <small>empty tableau</small></div>;return <div className={'tableau '+(q?'q':'')}>{data.map((r,i)=><div className="row" key={i}>{r.map((x,j)=><div className={'cell '+(active.some(b=>b.row===i&&b.column===j)?'active':'')} key={j}>{x}</div>)}</div>)}</div>}
+function Title({letter,title,sub}:{letter:string,title:string,sub:string}){return <div className="title"><b>{letter}</b><div><h2>{title}</h2><p>{sub}</p></div></div>}
+function App(){
+ const[input,setInput]=useState('3 1 4 2'),parsed=useMemo(()=>parseWord(input),[input]),word=parsed??[],history=useMemo(()=>traceRsk(word),[word]),[step,setStep]=useState(0),[playing,setPlaying]=useState(false),current=history[Math.min(step,history.length-1)]
+ useEffect(()=>{setStep(0);setPlaying(false)},[input])
+ useEffect(()=>{if(!playing)return;if(step>=word.length){setPlaying(false);return}const t=setTimeout(()=>setStep(x=>x+1),950);return()=>clearTimeout(t)},[playing,step,word.length])
+ const move=(n:number)=>{setPlaying(false);setStep(Math.max(0,Math.min(n,word.length)))}
+ return <main><header><div className="eyebrow">An interactive insertion story</div><h1>Robinson–Schensted–Knuth</h1><p>Watch a permutation become a pair of tableaux, one entry and one bump at a time.</p></header>
+ <section className="workbench"><div className="input-panel"><label htmlFor="word">Choose a permutation</label><div className={'input '+(parsed===null?'invalid':'')}><input id="word" value={input} onChange={e=>setInput(e.target.value)}/><span>{word.length} entries</span></div><p>Enter integers separated by spaces or commas.</p><div className="examples">{examples.map(e=><button key={e[0]} onClick={()=>setInput(e[1])}>{e[0]}</button>)}</div>{parsed===null&&<b>Every entry must be a whole number.</b>}</div>
+ <div className="sequence">{word.length?word.map((x,i)=><button key={i} onClick={()=>move(i+1)} className={(i<step?'used ':'')+(i===step-1?'current':'')}><span>{x}</span><small>{i+1}</small></button>):<em>Your permutation will appear here</em>}</div>
+ <div className="stage"><article><Title letter="P" title="Insertion tableau" sub="remembers the values"/><Tab data={current.p} active={current.bumps}/></article><i className="pair">↔</i><article><Title letter="Q" title="Recording tableau" sub="remembers the order"/><Tab q data={current.q} active={current.bumps.slice(-1)}/></article></div>
+ <div className="story"><strong>STEP {step} <span>/ {word.length}</span></strong><div><h3>{step?'Insert '+current.inserted:'Ready to insert'}</h3><p>{current.description}</p>{current.bumps.length>1&&<div className="path">{current.bumps.map((b,i)=><span key={i}>{b.arriving}{b.displaced!==undefined&&<small> bumps {b.displaced}</small>}</span>)}</div>}</div></div>
+ <nav><button onClick={()=>move(step-1)} disabled={!step}>←</button><button className="play" onClick={()=>step===word.length?move(0):setPlaying(!playing)} disabled={!word.length||parsed===null}>{step===word.length?'Start over':playing?'Pause':'Play'}</button><button onClick={()=>move(step+1)} disabled={step===word.length}>→</button></nav></section>
+ <footer><span>Row insertion</span> • The first entry larger than the arriving letter gets bumped to the next row.</footer></main>
+}
+createRoot(document.getElementById('root')!).render(<StrictMode><App/></StrictMode>)
